@@ -12,7 +12,7 @@ active_bc_interval = defaultdict(lambda: defaultdict(bool))  # {user_id: {type: 
 blacklist = set()
 usernames_history = defaultdict(list)
 message_count = defaultdict(int)  # {tanggal: jumlah_pesan}
-auto_replies = defaultdict(lambda: defaultdict(str))  # {user_id: {session_id: auto_reply_message}}
+auto_replies = defaultdict(str)  # {user_id: pesan_auto_reply}
 
 def parse_interval(interval_str):
     """Konversi format [10s, 1m, 2h, 1d] menjadi detik."""
@@ -30,13 +30,13 @@ def get_today_date():
 async def configure_event_handlers(client, user_id):
     """Konfigurasi semua fitur bot untuk user_id tertentu."""
 
-    @client.on(events.NewMessage(pattern=r'^206 ping$'))
+    @client.on(events.NewMessage(pattern=r'^ami ping$'))
     async def ping_handler(event):
         """Tes koneksi bot."""
         await event.reply("\U0001F3D3 Pong! Bot aktif.")
         message_count[get_today_date()] += 1
 
-    @client.on(events.NewMessage(pattern=r'^206 bcstar (.+)$'))
+    @client.on(events.NewMessage(pattern=r'^ami bcstar (.+)$'))
     async def broadcast_handler(event):
         """Broadcast pesan ke semua chat kecuali blacklist."""
         custom_message = event.pattern_match.group(1)
@@ -50,7 +50,7 @@ async def configure_event_handlers(client, user_id):
             except Exception as e:
                 print(f"Gagal mengirim pesan ke {dialog.name}: {e}")
 
-    @client.on(events.NewMessage(pattern=r'^206 bcstargr(\d+) (\d+[smhd]) (.+)$'))
+    @client.on(events.NewMessage(pattern=r'^ami bcstargr(\d+) (\d+[smhd]) (.+)$'))
     async def broadcast_group_handler(event):
         """Broadcast pesan hanya ke grup dengan interval tertentu dan update pesan secara dinamis."""
         group_number = event.pattern_match.group(1)
@@ -110,7 +110,9 @@ async def configure_event_handlers(client, user_id):
         # Update pesan ketika broadcast selesai
         await message.edit(f"✅ Broadcast ke grup {group_number} selesai!")
 
-    @client.on(events.NewMessage(pattern=r'^206 stopbcstargr(\d+)$'))
+
+
+    @client.on(events.NewMessage(pattern=r'^ami stopbcstargr(\d+)$'))
     async def stop_broadcast_group_handler(event):
         """Hentikan broadcast grup."""
         group_number = event.pattern_match.group(1)
@@ -120,44 +122,33 @@ async def configure_event_handlers(client, user_id):
         else:
             await event.reply(f"\u26A0 Tidak ada broadcast grup {group_number} yang berjalan.")
 
-    @client.on(events.NewMessage(pattern=r'^206 setreply(\d+) (.+)$'))
+    @client.on(events.NewMessage(pattern=r'^ami setreply (.+)$'))
     async def set_auto_reply(event):
-        """Mengatur pesan balasan otomatis berdasarkan nomor sesi."""
-        session_number = event.pattern_match.group(1)  # Mendapatkan nomor sesi seperti 1, 2, 3, dst
-        reply_message = event.pattern_match.group(2)
-
-        session_id = f"session{session_number}"  # Menyusun key berdasarkan nomor sesi
-
-        # Menyimpan pesan auto-reply untuk sesi tertentu
-        auto_replies[user_id][session_id] = reply_message
-        await event.reply(f"\u2705 Auto-reply di sesi {session_number} diatur: {reply_message}")
+        """Mengatur pesan balasan otomatis."""
+        reply_message = event.pattern_match.group(1)
+        auto_replies[user_id] = reply_message
+        await event.reply(f"\u2705 Auto-reply diatur: {reply_message}")
 
     @client.on(events.NewMessage(incoming=True))
     async def auto_reply_handler(event):
-        """Menangani auto-reply untuk setiap pesan masuk berdasarkan sesi yang aktif."""
-        if event.is_private and user_id in auto_replies:
-            # Misalnya menggunakan sender_id untuk menentukan sesi, bisa disesuaikan dengan logika yang diperlukan
-            session_number = event.sender_id % 3  # Menggunakan mod 3 agar memiliki 3 sesi
-            session_id = f"session{session_number}"
+        """Menangani auto-reply untuk setiap pesan masuk."""
+        if event.is_private and user_id in auto_replies and auto_replies[user_id]:
+            try:
+                sender = await event.get_sender()
+                peer = InputPeerUser(sender.id, sender.access_hash)  # Pakai InputPeerUser
+                
+                await client.send_message(peer, auto_replies[user_id])
+                await client.send_read_acknowledge(peer)  # Tandai sebagai telah dibaca
 
-            # Pastikan ada auto-reply yang diatur untuk sesi ini
-            if session_id in auto_replies[user_id] and auto_replies[user_id][session_id]:
-                try:
-                    sender = await event.get_sender()
-                    peer = InputPeerUser(sender.id, sender.access_hash)  # Pakai InputPeerUser
+                message_count[get_today_date()] += 1
+            except errors.rpcerrorlist.UsernameNotOccupiedError:
+                print("Gagal mengirim auto-reply: Username tidak ditemukan.")
+            except errors.rpcerrorlist.FloodWaitError as e:
+                print(f"Bot terkena flood wait. Coba lagi dalam {e.seconds} detik.")
+            except Exception as e:
+                print(f"Gagal mengirim auto-reply: {e}")
 
-                    await client.send_message(peer, auto_replies[user_id][session_id])
-                    await client.send_read_acknowledge(peer)  # Tandai sebagai telah dibaca
-
-                    message_count[get_today_date()] += 1
-                except errors.rpcerrorlist.UsernameNotOccupiedError:
-                    print("Gagal mengirim auto-reply: Username tidak ditemukan.")
-                except errors.rpcerrorlist.FloodWaitError as e:
-                    print(f"Bot terkena flood wait. Coba lagi dalam {e.seconds} detik.")
-                except Exception as e:
-                    print(f"Gagal mengirim auto-reply: {e}")
-
-    @client.on(events.NewMessage(pattern=r'^206 stopall$'))
+    @client.on(events.NewMessage(pattern=r'^ami stopall$'))
     async def stop_all_handler(event):
         """Reset semua pengaturan (setreply, broadcast, dll)."""
         # Reset status broadcast untuk setiap grup
@@ -165,7 +156,7 @@ async def configure_event_handlers(client, user_id):
             active_bc_interval[user_id][group_key] = False
 
         # Reset auto-reply
-        auto_replies[user_id] = {}
+        auto_replies[user_id] = ""
 
         # Reset blacklist (optional, jika ingin menghapus semua blacklist untuk user)
         blacklist.clear()
@@ -181,17 +172,18 @@ async def configure_event_handlers(client, user_id):
 
         await event.reply("\u2705 Semua pengaturan telah direset dan semua broadcast dihentikan.")
 
-    @client.on(events.NewMessage(pattern=r'^206 help$'))
+
+    @client.on(events.NewMessage(pattern=r'^ami help$'))
     async def help_handler(event):
         """Tampilkan daftar perintah."""
         help_text = (
             "\U0001F4AC Daftar Perintah:\n"
-            "206 ping - Cek status bot\n"
-            "206 bcstar <pesan> - Kirim broadcast ke semua chat\n"
-            "206 bcstargr<nomor> <interval> <pesan> - Kirim broadcast ke grup tertentu\n"
-            "206 stopbcstargr<nomor> - Hentikan broadcast ke grup tertentu\n"
-            "206 setreply<nomor> <pesan> - Set auto-reply untuk chat masuk\n"
-            "206 stopall - Reset semua pengaturan\n"
-            "206 help - Menampilkan daftar perintah"
+            "ami ping - Cek status bot\n"
+            "ami bcstar <pesan> - Kirim broadcast ke semua chat\n"
+            "ami bcstargr<nomor> <interval> <pesan> - Kirim broadcast ke grup tertentu\n"
+            "ami stopbcstargr<nomor> - Hentikan broadcast ke grup tertentu\n"
+            "ami setreply <pesan> - Set auto-reply untuk chat masuk untuk seluruh akun yang terkoneksi bot\n"
+            "ami stopall - Reset semua pengaturan semua akun yang ada di bot\n"
+            "ami help - Menampilkan daftar perintah"
         )
         await event.reply(help_text)
