@@ -30,13 +30,13 @@ def get_today_date():
 async def configure_event_handlers(client, user_id):
     """Konfigurasi semua fitur bot untuk user_id tertentu."""
 
-    @client.on(events.NewMessage(pattern=r'^galping$'))
+    @client.on(events.NewMessage(pattern=r'^gal ping$'))
     async def ping_handler(event):
         """Tes koneksi bot."""
         await event.reply("\U0001F3D3 Pong! Bot aktif.")
         message_count[get_today_date()] += 1
 
-    @client.on(events.NewMessage(pattern=r'^galbcstar (.+)$'))
+    @client.on(events.NewMessage(pattern=r'^gal bcstar (.+)$'))
     async def broadcast_handler(event):
         """Broadcast pesan ke semua chat kecuali blacklist."""
         custom_message = event.pattern_match.group(1)
@@ -50,7 +50,7 @@ async def configure_event_handlers(client, user_id):
             except Exception as e:
                 print(f"Gagal mengirim pesan ke {dialog.name}: {e}")
 
-    @client.on(events.NewMessage(pattern=r'^galbcstargr(\d+)(\d+[smhd])(.+)$'))
+    @client.on(events.NewMessage(pattern=r'^gal bcstargr(\d+) (\d+[smhd]) (.+)$'))
     async def broadcast_group_handler(event):
         """Broadcast pesan hanya ke grup dengan interval tertentu dan update pesan secara dinamis."""
         group_number = event.pattern_match.group(1)
@@ -110,7 +110,7 @@ async def configure_event_handlers(client, user_id):
         # Update pesan ketika broadcast selesai
         await message.edit(f"✅ Broadcast ke grup {group_number} selesai!")
 
-    @client.on(events.NewMessage(pattern=r'^galstopbcstargr(\d+)$'))
+    @client.on(events.NewMessage(pattern=r'^gal stopbcstargr(\d+)$'))
     async def stop_broadcast_group_handler(event):
         """Hentikan broadcast grup."""
         group_number = event.pattern_match.group(1)
@@ -120,7 +120,7 @@ async def configure_event_handlers(client, user_id):
         else:
             await event.reply(f"\u26A0 Tidak ada broadcast grup {group_number} yang berjalan.")
 
-    @client.on(events.NewMessage(pattern=r'^galsetreply (.+)$'))
+    @client.on(events.NewMessage(pattern=r'^gal setreply (.+)$'))
     async def set_auto_reply(event):
         """Mengatur pesan balasan otomatis."""
         reply_message = event.pattern_match.group(1)
@@ -146,7 +146,7 @@ async def configure_event_handlers(client, user_id):
             except Exception as e:
                 print(f"Gagal mengirim auto-reply: {e}")
 
-    @client.on(events.NewMessage(pattern=r'^galstopall$'))
+    @client.on(events.NewMessage(pattern=r'^gal stopall$'))
     async def stop_all_handler(event):
         """Reset semua pengaturan (setreply, broadcast, dll)."""
         # Reset status broadcast untuk setiap grup
@@ -170,17 +170,17 @@ async def configure_event_handlers(client, user_id):
 
         await event.reply("\u2705 Semua pengaturan telah direset dan semua broadcast dihentikan.")
 
-    @client.on(events.NewMessage(pattern=r'^galhelp$'))
+    @client.on(events.NewMessage(pattern=r'^gal help$'))
     async def help_handler(event):
         """Tampilkan daftar perintah."""
         help_text = (
             "\U0001F4AC Daftar Perintah:\n"
-            "galping - Cek status bot\n"
-            "galbcstar <pesan> - Kirim broadcast ke semua chat\n"
-            "galbcstargr<nomor><interval><pesan> - Kirim broadcast ke grup tertentu\n"
-            "galstopbcstargr<nomor> - Hentikan broadcast ke grup tertentu\n"
-            "galsetreply <pesan> - Set auto-reply untuk chat masuk untuk seluruh akun yang terkoneksi bot\n"
-            "galstopall - Reset semua pengaturan semua akun yang ada di bot\n"
-            "galhelp - Menampilkan daftar perintah"
+            "gal ping - Cek status bot\n"
+            "gal bcstar <pesan> - Kirim broadcast ke semua chat\n"
+            "gal bcstargr<nomor> <interval> <pesan> - Kirim broadcast ke grup tertentu\n"
+            "gal stopbcstargr<nomor> - Hentikan broadcast ke grup tertentu\n"
+            "gal setreply <pesan> - Set auto-reply untuk chat masuk untuk seluruh akun yang terkoneksi bot\n"
+            "gal stopall - Reset semua pengaturan semua akun yang ada di bot\n"
+            "gal help - Menampilkan daftar perintah"
         )
         await event.reply(help_text)
