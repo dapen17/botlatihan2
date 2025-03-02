@@ -29,7 +29,7 @@ bot_client = TelegramClient('bot_session', api_id, api_hash)
 
 # Variabel global untuk menghitung total sesi
 total_sessions = 0
-MAX_SESSIONS = 4  # Batas maksimal sesi (ubah menjadi 10)
+MAX_SESSIONS = 5  # Batas maksimal sesi (ubah menjadi 10)
 
 # Dictionary untuk menyimpan sesi pengguna sementara
 user_sessions = {}  # Struktur: {user_id: [{'client': TelegramClient, 'phone': str}]}
@@ -39,8 +39,7 @@ async def start(event):
     await event.reply(
         "Selamat datang di bot multi-login! 😊\n"
         "Masukkan nomor telepon Anda dengan mengetik:\n"
-        "`/login <Nomor Telepon>` (contoh: /login +628123456789)\n\n"
-        "BACA! : 2 Verifikasi harus mati / Matikan password pada account yang mau dijadiin bot"
+        "`/login <Nomor Telepon>` (contoh: /login +628123456789)"
     )
 
 @bot_client.on(events.NewMessage(pattern='/login (.+)'))
@@ -49,7 +48,7 @@ async def login(event):
 
     # Cek apakah jumlah sesi sudah mencapai batas maksimal
     if total_sessions >= MAX_SESSIONS:
-        await event.reply("⚠️ Bot sudah terhubung dengan maksimal 4 akun. Logout salah satu untuk menambahkan akun baru.")
+        await event.reply("⚠️ Bot sudah terhubung dengan maksimal 10 akun. Logout salah satu untuk menambahkan akun baru.")
         return
 
     sender = await event.get_sender()
